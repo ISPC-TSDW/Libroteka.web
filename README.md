@@ -25,6 +25,25 @@ Puntos claves:
 | Desarrollo	| "dev"
 | Rama Integrantes | "iniciales-feature"
 
+## Descargar Mysql para poder usar la base de datos.
+  # Windows:
+    Descarga el instalador de MySQL desde [el sitio web oficial de MySQL.](https://dev.mysql.com/downloads/installer/)
+    Durante la instalación, selecciona "MySQL Server"
+
+  # Linux (Ubuntu):
+    sudo apt update
+    sudo apt install mysql-server
+    sudo service mysql start
+  # macOS:
+    brew install mysql
+    brew services start mysql
+
+## Crear base de datos
+  mysql -u root -p  ##si lo haces desde la terminal, 
+                    ##si tenes MySQL Command Line Client no es necesario solo te va a pedir la password(2920 o la que configuraste cuando instalaste)
+
+  CREATE DATABASE libroteka2024; # despues de crear la Db sigan con las instalaciones de abajo
+
 ## Credenciales Django Admin
 - user: superadmin
 - password: libroteka
@@ -80,18 +99,32 @@ Go to the project directory
   cd Backend/Libroteka
 ```
 
-Activate Virtual environment & install Libraries
+Activate Virtual environment  
 
 ```bash
-.\backendLibroteka-env\bin\activate # Windows users
-source backendLibroteka-env/bin/activate # Linux users
+# Windows users: create your branch, delete the linux folder '.backendLibroteka-env' as it has linux/mac configuration and you must create a virtual environment for Windows to install the requirements, remember not to include '.backendLibroteka-env' in your commits.
+1. python -m venv .backendLibroteka-env
+2. .backendLibroteka-env\Scripts\activate
 
+# Linux users
+source backendLibroteka-env/bin/activate 
 ```
-```bash
- cd Libroteka/Backend/Libroteka
-```
+
+Install Libraries
+
 ```bash
   pip install -r requirements.txt
+```
+## If you made changes to models.py:
+
+```bash 
+  python manage.py makemigrations
+```
+## Executes the necessary operations to synchronize the models with the database tables, 
+## such as creating new tables, modifying columns, deleting tables, etc.
+
+```bash
+  python manage.py migrate
 ```
 
 Start the server
