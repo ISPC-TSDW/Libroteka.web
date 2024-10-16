@@ -11,7 +11,7 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 """
 
 from pathlib import Path
-
+import os
 import environ
 env = environ.Env()
 environ.Env.read_env()
@@ -29,8 +29,8 @@ SECRET_KEY = 'django-insecure-q)sw(_dr!#=lvd4*lp51u9c($#(*q$7j%+m_n01+j#za)+p2%d
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['127.0.0.1', "localhost"]
-
+#ALLOWED_HOSTS = ['127.0.0.1', "localhost"]
+ALLOWED_HOSTS = os.getenv("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1,[::1]").split(",")
 
 # Application definition
 
