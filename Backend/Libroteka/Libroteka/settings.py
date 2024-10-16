@@ -121,13 +121,12 @@ WSGI_APPLICATION = 'Libroteka.wsgi.application'
 DATABASES = {
     'default': {
        'ENGINE': 'django.db.backends.mysql',
-       'NAME': 'libroteka2024',
-       'USER': 'root',
-       'PASSWORD': '2920',
-       'HOST': env('DB_HOST'),
-       'PORT': '3306',
+       'NAME': env('MYSQL_DATABASE'),
+       'USER': env('MYSQLUSER'),
+       'PASSWORD': env('MYSQL_ROOT_PASSWORD'),
+       'HOST': env('MYSQL_PUBLIC_URL'),
+       'PORT': env('MYSQLPORT'), 
     
-
     }
 }
 
