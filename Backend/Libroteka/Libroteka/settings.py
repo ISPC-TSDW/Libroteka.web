@@ -118,18 +118,27 @@ WSGI_APPLICATION = 'Libroteka.wsgi.application'
 #Ejecutar este comando   py manage.py migrate   
 #Ejecute py manage.py runserver
 
-DATABASES = {
-    'default': {
-       'ENGINE': 'django.db.backends.mysql',
-       'NAME': env('MYSQL_DATABASE'),
-       'USER': env('MYSQLUSER'),
-       'PASSWORD': env('MYSQL_ROOT_PASSWORD'),
-       'HOST': env('MYSQL_PUBLIC_URL'),
-       'PORT': env('MYSQLPORT'), 
-    
-    }
-}
 
+import connection_url
+
+
+DATABASES = {
+#     'default': {
+#        'ENGINE': 'django.db.backends.mysql',
+#        'NAME': env('MYSQL_DATABASE'),
+#        'USER': env('MYSQLUSER'),
+#        'PASSWORD': env('MYSQL_ROOT_PASSWORD'),
+#        'HOST': env('MYSQL_PUBLIC_URL'),
+#        'PORT': env('MYSQLPORT'), 
+    
+#     }
+}
+HOST = env('MYSQL_PUBLIC_URL')
+
+DATABASES['default'] = connection_url.config(HOST, {
+                      'ENGINE': 'django.db.backends.mysql',
+                      'CONN_MAX_AGE': 1000,
+                      }, ENGINE='django.db.backends.mysql')
 
 
 # Password validation
