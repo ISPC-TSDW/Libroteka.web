@@ -1,30 +1,22 @@
 from django.http import JsonResponse
-from django.shortcuts import render
+from django.shortcuts import render, get_object_or_404
 from django.views import View
 from rest_framework import viewsets, generics, permissions, status
 from rest_framework.views import APIView
-from django.shortcuts import render
-from django.views import View
 from rest_framework.response import Response
+from rest_framework.authtoken.serializers import AuthTokenSerializer
+# ViewSets for different models
+from django.db.models import Q, Avg
+from rest_framework.permissions import AllowAny
 from knox.models import AuthToken
 # from knox.views import LoginView as KnoxLoginView
 from django.contrib.auth import login, authenticate
-from rest_framework.authtoken.serializers import AuthTokenSerializer
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.hashers import check_password
 from django.utils import timezone
-from django.shortcuts import get_object_or_404
 import json
-
-from .models import Author, Editorial, User, Genre, Order, OrderStatus, Book, Role, UsersLibroteka
-from .serializer import (
-    AuthorSerializer, EditorialSerializer, UserSerializer, RegisterSerializer, 
-    GenreSerializer, BookSerializer, RoleSerializer, UsersLibrotekaSerializer, LoginSerializer, OrderSerializer
-)
-
-# ViewSets for different models
-from django.db.models import Q
-from rest_framework.permissions import AllowAny
+from .models import *
+from .serializer import *
 
 class AuthorViewSet(viewsets.ModelViewSet):
     queryset = Author.objects.all()
@@ -45,6 +37,14 @@ class BookViewSet(viewsets.ModelViewSet):
 class UsersLibrotekaViewSet(viewsets.ModelViewSet):
     queryset = UsersLibroteka.objects.all()
     serializer_class = UsersLibrotekaSerializer
+
+class FavoriteViewSet(viewsets.ModelViewSet):
+    queryset = Favorite.objects.all()
+    serializer_class = FavoriteSerializer
+
+class RatingViewSet(viewsets.ModelViewSet):
+    queryset = Rating.objects.all()
+    serializer_class = RatingSerializer
 
 class LibrosView(APIView):
     permission_classes = [AllowAny] 
@@ -116,6 +116,7 @@ class RegisterAPI(generics.GenericAPIView):
 class OrdersViewSet(viewsets.ModelViewSet):
     queryset = Order.objects.all()
     serializer_class = OrderSerializer
+
 class LoginAPI(APIView):
     def post(self, request):
         serializer = LoginSerializer(data=request.data)
@@ -131,6 +132,9 @@ class LoginAPI(APIView):
             except UsersLibroteka.DoesNotExist:
                 return Response({"message": "User does not exist"}, status=status.HTTP_404_NOT_FOUND)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+
 # Login API
 # @csrf_exempt
 
@@ -250,4 +254,60 @@ class CreateOrderView(APIView):
 #         else:
 #             return JsonResponse({'message': 'Invalid email or password'}, status=401)
 #     return JsonResponse({'message': 'Method not allowed'}, status=405)
+
+class FavoriteView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        book_id = request.data.get('book_id')
+        book = Book.objects.get(id=book_id)
+        favorite, created = Favorite.objects.get_or_create(user=request.user, book=book)
+        if created:
+            return Response({'message': 'Added to favorites'}, status=status.HTTP_201_CREATED)
+        return Response({'message': 'Already in favorites'}, status=status.HTTP_200_OK)
+
+    def delete(self, request):
+        book_id = request.data.get('book_id')
+        book = Book.objects.get(id=book_id)
+        favorite = Favorite.objects.filter(user=request.user, book=book).first()
+        if favorite:
+            favorite.delete()
+            return Response({'message': 'Removed from favorites'}, status=status.HTTP_204_NO_CONTENT)
+        return Response({'message': 'Not in favorites'}, status=status.HTTP_404_NOT_FOUND)
+
+
+class BookRatingView(APIView):
+    permission_classes = [AllowAny]
     
+    def post(self,request, *args, **kwargs):
+        serializer = RatingSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            update_book_avg_rating(serializer.data['id_book'])
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    def put(self, request, pk):
+        rating = get_object_or_404(Rating, pk=pk)
+        serializer = RatingSerializer(rating, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            # Actualizar el promedio de valoraciones
+            update_book_avg_rating(serializer.data['id_book'])
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, pk):
+        rating = get_object_or_404(Rating, pk=pk)
+        book_id = rating.id_book.id_Book  # Guardar el ID del libro antes de eliminar la valoración
+        rating.delete()
+        # Actualizar el promedio de valoraciones después de eliminar
+        update_book_avg_rating(book_id)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+
+def update_book_avg_rating(book):
+    avg_rating = Rating.objects.filter(id_book=book).aggregate(Avg('rating'))['rating__avg'] or 0
+    book.avg_rating = avg_rating
+    book.save()

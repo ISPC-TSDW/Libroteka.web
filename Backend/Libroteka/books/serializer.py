@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Author, Editorial, Genre, Order, OrderStatus, Book, Role, UsersLibroteka
+from .models import *
 from django.contrib.auth.models import User
 from django.contrib.auth.hashers import make_password
 from django.views.decorators.csrf import csrf_exempt
@@ -24,17 +24,36 @@ class BookSerializer(serializers.ModelSerializer):
     id_Author = AuthorSerializer()
     id_Genre = GenreSerializer()
     id_Editorial = EditorialSerializer()
+    avg_rating = serializers.FloatField(read_only=True)
 
     class Meta:
         model = Book
-        fields = ['id_Book', 'title', 'id_Author', 'id_Genre', 'id_Editorial', 'description', 'price', 'stock']
+        fields = ['id_Book', 'title', 'id_Author', 'id_Genre', 'id_Editorial', 'description', 'price', 'stock', 'avg_rating']
 
     def create(self, validated_data):
             author_data = validated_data.pop('id_Author', None)
             genre_data = validated_data.pop('id_Genre', None)
             editorial_data = validated_data.pop('id_Editorial', None)
 
-            try:
+            # Crear o recuperar las instancias relacionadas
+            author = self.get_or_create_author(author_data)
+            genre = self.get_or_create_genre(genre_data)
+            editorial = self.get_or_create_editorial(editorial_data)
+
+            # Verificar si el libro ya existe
+            if Book.objects.filter(title=validated_data['title']).exists():
+                raise serializers.ValidationError({"detail": "Este libro ya está registrado."})
+
+            # Crear el libro con los datos relacionados
+            book = Book.objects.create(
+                id_Author=author,
+                id_Genre=genre,
+                id_Editorial=editorial,
+                **validated_data
+            )
+            return book
+
+    '''            try:
                 author = Author.objects.get(name=author_data['name'])
                 genre = Genre.objects.get(name=genre_data['name'])
                 editorial = Editorial.objects.get(name=editorial_data['name'])
@@ -57,37 +76,65 @@ class BookSerializer(serializers.ModelSerializer):
                 **validated_data
             )
             return book
+        '''
+
     
     def update(self, instance, validated_data):
         author_data = validated_data.get('id_Author', None)
         genre_data = validated_data.get('id_Genre', None)
         editorial_data = validated_data.get('id_Editorial', None)
-
+                # Actualizar relaciones si es necesario
         if author_data:
-            author_serializer = AuthorSerializer(instance.id_Author, data=author_data)
-            if author_serializer.is_valid(raise_exception=True):
-                author_serializer.save()
-
+            instance.id_Author = self.get_or_create_author(author_data)
         if genre_data:
-            genre_serializer = GenreSerializer(instance.id_Genre, data=genre_data)
-            if genre_serializer.is_valid(raise_exception=True):
-                genre_serializer.save()
-
+            instance.id_Genre = self.get_or_create_genre(genre_data)
         if editorial_data:
-            editorial_serializer = EditorialSerializer(instance.id_Editorial, data=editorial_data)
-            if editorial_serializer.is_valid(raise_exception=True):
-                editorial_serializer.save()
+            instance.id_Editorial = self.get_or_create_editorial(editorial_data)
 
+        # Actualizar otros campos
         instance.description = validated_data.get('description', instance.description)
         instance.price = validated_data.get('price', instance.price)
         instance.stock = validated_data.get('stock', instance.stock)
 
-        for attr, value in validated_data.items():
-            setattr(instance, attr, value)
-
         instance.save()
 
         return instance
+
+    def get_or_create_author(self, author_data):
+        return Author.objects.get_or_create(name=author_data['name'])[0]
+
+    def get_or_create_genre(self, genre_data):
+        return Genre.objects.get_or_create(name=genre_data['name'])[0]
+
+    def get_or_create_editorial(self, editorial_data):
+        return Editorial.objects.get_or_create(name=editorial_data['name'])[0]
+    '''
+            if author_data:
+                author_serializer = AuthorSerializer(instance.id_Author, data=author_data)
+                if author_serializer.is_valid(raise_exception=True):
+                    author_serializer.save()
+
+            if genre_data:
+                genre_serializer = GenreSerializer(instance.id_Genre, data=genre_data)
+                if genre_serializer.is_valid(raise_exception=True):
+                    genre_serializer.save()
+
+            if editorial_data:
+                editorial_serializer = EditorialSerializer(instance.id_Editorial, data=editorial_data)
+                if editorial_serializer.is_valid(raise_exception=True):
+                    editorial_serializer.save()
+
+            instance.description = validated_data.get('description', instance.description)
+            instance.price = validated_data.get('price', instance.price)
+            instance.stock = validated_data.get('stock', instance.stock)
+
+            for attr, value in validated_data.items():
+                setattr(instance, attr, value)
+
+            instance.save()
+
+            return instance
+    '''
         
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -175,4 +222,13 @@ class OrderSerializer(serializers.ModelSerializer):
 #             return JsonResponse({'message': 'Login successful', 'user': {'username': user.username, 'email': user.email}})
 #         return JsonResponse(serializer.errors, status=400)
 #     return JsonResponse({'message': 'Method not allowed'}, status=405)
-    
+
+class FavoriteSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Favorite
+        fields = ['id', 'id_user', 'id_book', 'created_at']
+
+class RatingSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Rating
+        fields = ['id', 'id_user', 'id_book', 'rating', 'created_at', 'updated_at']
