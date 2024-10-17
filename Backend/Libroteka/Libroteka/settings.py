@@ -11,6 +11,10 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 """
 
 from pathlib import Path
+import os
+import environ
+env = environ.Env()
+environ.Env.read_env()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -25,8 +29,8 @@ SECRET_KEY = 'django-insecure-q)sw(_dr!#=lvd4*lp51u9c($#(*q$7j%+m_n01+j#za)+p2%d
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['127.0.0.1', "localhost"]
-
+#ALLOWED_HOSTS = ['127.0.0.1', "localhost"]
+ALLOWED_HOSTS = os.getenv("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1,[::1]").split(",")
 
 # Application definition
 
@@ -46,6 +50,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'corsheaders.middleware.CorsMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -114,21 +119,27 @@ WSGI_APPLICATION = 'Libroteka.wsgi.application'
 #Ejecutar este comando   py manage.py migrate   
 #Ejecute py manage.py runserver
 
+
+import connection_url
+
+
 DATABASES = {
-    'default': {
-       'ENGINE': 'django.db.backends.mysql',
-       'NAME': 'libroteka2024',
-       'USER': 'root',
-       'PASSWORD': '2920',
-       'HOST': 'localhost',
-       'PORT': '3306',
-       'OPTIONS': {
-            'init_command': "SET sql_mode='STRICT_TRANS_TABLES'"
-        }
-
-    }
+#     'default': {
+#        'ENGINE': 'django.db.backends.mysql',
+#        'NAME': env('MYSQL_DATABASE'),
+#        'USER': env('MYSQLUSER'),
+#        'PASSWORD': env('MYSQL_ROOT_PASSWORD'),
+#        'HOST': env('MYSQL_PUBLIC_URL'),
+#        'PORT': env('MYSQLPORT'), 
+    
+#     }
 }
+HOST = env('MYSQL_PUBLIC_URL')
 
+DATABASES['default'] = connection_url.config(HOST, {
+                      'ENGINE': 'django.db.backends.mysql',
+                      'CONN_MAX_AGE': 1000,
+                      }, ENGINE='django.db.backends.mysql')
 
 
 # Password validation
@@ -165,7 +176,8 @@ USE_TZ = True
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.2/howto/static-files/
-
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 STATIC_URL = 'static/'
 
 # Default primary key field type
